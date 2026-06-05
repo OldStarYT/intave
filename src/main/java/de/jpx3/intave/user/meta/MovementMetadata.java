@@ -76,7 +76,7 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean collidedHorizontally, collidedVertically;
   public float artificialFallDistance;
   public boolean dealCustomFallDamage;
-  public double gravity;
+  public double gravity = 0.08;
   public boolean outsideBorder = true;
   public Vector lookVector = new Vector();
   public double verifiedPositionX, verifiedPositionY, verifiedPositionZ;
@@ -100,7 +100,7 @@ public final class MovementMetadata implements SimulationEnvironment {
   public Vector lastVelocity = new Vector();
   public boolean canResetMotion;
   public int pastNearbyCollisionInaccuracy = 10;
-  public float frictionMultiplier;
+  public float frictionMultiplier = 0.09998f;
   public int lastPositionUpdate;
   @Nullable
   public Fluid interactingFluid;
@@ -299,6 +299,9 @@ public final class MovementMetadata implements SimulationEnvironment {
     positionX = location.getX();
     positionY = location.getY();
     positionZ = location.getZ();
+    lastPositionX = positionX;
+    lastPositionY = positionY;
+    lastPositionZ = positionZ;
     verifiedPositionX = positionX;
     verifiedPositionY = positionY;
     verifiedPositionZ = positionZ;

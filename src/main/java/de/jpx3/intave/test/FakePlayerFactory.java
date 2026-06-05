@@ -125,7 +125,7 @@ public final class FakePlayerFactory {
       .or(ElementMatchers.isDeclaredBy(FakePlayer.class)));
     try {
       return createSubclass(FakePlayer.class, ConstructorStrategy.Default.NO_CONSTRUCTORS)
-        .name(FakePlayerFactory.class.getPackage().getName() + ".PlayerGenerator" + UUID.randomUUID().toString().substring(0,8) + COUNTER++)
+        .name(FakePlayerFactory.class.getPackage().getName() + ".PlayerGenerator" + UUID.randomUUID().toString().substring(0, 8) + COUNTER++)
         .implement(new Type[]{Player.class})
         .defineField("server", Server.class, new ModifierContributor.ForField[]{Visibility.PRIVATE})
         .defineConstructor(new ModifierContributor.ForMethod[]{Visibility.PUBLIC})
@@ -144,7 +144,9 @@ public final class FakePlayerFactory {
     }
   }
 
-  private static <T> DynamicType.Builder.MethodDefinition.ImplementationDefinition.Optional<T> createSubclass(Class<T> clz, ConstructorStrategy.Default constructorStrategy) {
+  private static <T> DynamicType.Builder.MethodDefinition.ImplementationDefinition.Optional<T> createSubclass(
+    Class<T> clz, ConstructorStrategy.Default constructorStrategy
+  ) {
     return (new ByteBuddy()).subclass(clz, constructorStrategy).implement(ByteBuddyGenerated.class);
   }
 

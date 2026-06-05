@@ -7,10 +7,10 @@ import de.jpx3.intave.block.fluid.FluidFlow;
 import de.jpx3.intave.block.fluid.Fluids;
 import de.jpx3.intave.block.shape.resolve.DrillResolver;
 import de.jpx3.intave.block.shape.resolve.MockShapeResolverPipeline;
-import de.jpx3.intave.player.meta.IntaveMetadataValue;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
+import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.test.FakePlayerFactory;
@@ -19,8 +19,8 @@ import de.jpx3.intave.test.MockEmptyInventory;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserFactory;
 import de.jpx3.intave.user.UserRepository;
+import de.jpx3.intave.user.meta.MovementMetadata;
 import de.jpx3.intave.world.border.MockWorldBorder;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.UUID;
 
-import static org.bukkit.GameMode.*;
+import static org.bukkit.GameMode.SURVIVAL;
 
 public final class ExamplePhysicsTest {
   private static final UUID EMPTY_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
@@ -70,12 +70,11 @@ public final class ExamplePhysicsTest {
           case "getWorldBorder":
             return worldBorder;
         }
-
         return null;
       }
     );
 
-    Location location = new Location(world, 0, 0, 0);
+    Location location = new Location(world, 0, 20, 0);
     player = FakePlayerFactory.createPlayer(
       (methodName, args) -> {
         switch (methodName) {
@@ -135,15 +134,41 @@ public final class ExamplePhysicsTest {
 
   @Test
   public void testy() {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
     Simulator simulator = Simulators.PLAYER;
-    simulator.simulatePreTick(
-      testUser, Motion.newEmpty(), testUser.meta().movement()
-    );
-    simulator.simulateTick(
-      testUser, Motion.newEmpty(), testUser.meta().movement(), MovementConfiguration.noAction().withJump()
-    );
-    simulator.simulateAfterTick(
-      testUser, testUser.meta().movement(), Position.mutableEmpty(), Motion.newEmpty()
-    );
+    Motion motion;
+    MovementMetadata metadata = testUser.meta().movement();
+
+    for (int i = 0; i < 200; i++) {
+      motion = metadata.mutableBaseMotionCopy();
+      simulator.simulatePreTick(
+        testUser, motion.copy(), metadata
+      );
+      Simulation simulation = simulator.simulateTick(
+        testUser, motion.copy(), metadata.unmodifiable(), MovementConfiguration.noAction().withJump()
+      );
+      motion = simulation.motion();
+      simulator.simulateAfterTick(
+        testUser, metadata, metadata.verifiedPosition(), motion
+      );
+      Location lastLocation = metadata.lastPosition().toLocation(player.getWorld());
+      Location newLocation = lastLocation.clone().add(motion.toBukkitVector());
+      metadata.setVerifiedLocation(
+        lastLocation, "AUTOACCEPT"
+      );
+      metadata.positionX = newLocation.getX();
+      metadata.positionY = newLocation.getY();
+      metadata.positionZ = newLocation.getZ();
+      metadata.setBoundingBox(
+        BoundingBox.fromPosition(testUser, metadata.unmodifiable(), newLocation)
+      );
+      metadata.setBaseMotion(motion);
+      System.out.println(motion);
+    }
   }
 }

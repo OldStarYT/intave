@@ -16,19 +16,25 @@ public final class MockShapeResolverPipeline implements ShapeResolverPipeline {
 
   @Override
   public BlockShape collisionShapeOf(World world, Player player, Material type, int variantIndex, int posX, int posY, int posZ) {
-    return collisionShape.computeIfAbsent(type, t -> new HashMap<>()).computeIfAbsent(variantIndex, i -> BlockShapes.cubeAt(posX, posY, posZ));
+    return collisionShape.computeIfAbsent(type, t -> new HashMap<>())
+      .computeIfAbsent(variantIndex, i -> BlockShapes.emptyShape())
+      .contextualized(posX, posY, posZ);
   }
 
   @Override
   public BlockShape outlineShapeOf(World world, Player player, Material type, int variantIndex, int posX, int posY, int posZ) {
-    return outlineShape.computeIfAbsent(type, t -> new HashMap<>()).computeIfAbsent(variantIndex, i -> BlockShapes.cubeAt(posX, posY, posZ));
+    return outlineShape.computeIfAbsent(type, t -> new HashMap<>())
+      .computeIfAbsent(variantIndex, i -> BlockShapes.emptyShape())
+      .contextualized(posX, posY, posZ);
   }
 
   public void setCollisionShape(Material type, int variantIndex, BlockShape shape) {
-    collisionShape.computeIfAbsent(type, t -> new HashMap<>()).put(variantIndex, shape);
+    collisionShape.computeIfAbsent(type, t -> new HashMap<>())
+      .put(variantIndex, shape);
   }
 
   public void setOutlineShape(Material type, int variantIndex, BlockShape shape) {
-    outlineShape.computeIfAbsent(type, t -> new HashMap<>()).put(variantIndex, shape);
+    outlineShape.computeIfAbsent(type, t -> new HashMap<>())
+      .put(variantIndex, shape);
   }
 }

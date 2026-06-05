@@ -60,6 +60,7 @@ final class TestUser implements User {
 
     this.poseSizes = Pose.poseSizesByVersion(protocolVersion);
     meta.setup();
+    meta.movement().setupDefaults();
   }
 
   @Override
