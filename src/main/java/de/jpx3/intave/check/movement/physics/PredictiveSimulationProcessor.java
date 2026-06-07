@@ -185,7 +185,7 @@ public final class PredictiveSimulationProcessor implements SimulationProcessor 
       Timings.CHECK_PHYSICS_PROC_PRED_BIA.stop();
       return Simulation.invalid();
     }
-    MovementConfiguration configuration = MovementConfiguration.noAction();
+    MovementConfiguration configuration = MovementConfiguration.blank();
     // keys
     configuration = configuration.withKeypress(forwardKeyFrom(direction), strafeKeyFrom(direction));
     // jump
@@ -269,7 +269,7 @@ public final class PredictiveSimulationProcessor implements SimulationProcessor 
       Timings.CHECK_PHYSICS_PROC_BIA.stop();
       return Simulation.invalid();
     }
-    MovementConfiguration configuration = MovementConfiguration.noAction();
+    MovementConfiguration configuration = MovementConfiguration.blank();
     // keys
     configuration = configuration.withKeypress(keyForward, keyStrafe);
     // reducing
@@ -465,7 +465,7 @@ public final class PredictiveSimulationProcessor implements SimulationProcessor 
       simulateAndAppend(
         user, simulator,
         simulationStack,
-        MovementConfiguration.noAction(),
+        MovementConfiguration.blank(),
         true
       );
     }

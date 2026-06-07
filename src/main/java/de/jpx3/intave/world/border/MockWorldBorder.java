@@ -86,4 +86,8 @@ public final class MockWorldBorder implements WorldBorder {
   public void setWarningDistance(int i) {
 
   }
+
+  public static MockWorldBorder create() {
+    return new MockWorldBorder(new Location(null, 0, 0, 0));
+  }
 }

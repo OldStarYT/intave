@@ -10,7 +10,6 @@ import de.jpx3.intave.block.shape.resolve.MockShapeResolverPipeline;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
-import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.test.FakePlayerFactory;
@@ -29,146 +28,142 @@ import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.UUID;
 
-import static org.bukkit.GameMode.SURVIVAL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class ExamplePhysicsTest {
-  private static final UUID EMPTY_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+	private static final UUID EMPTY_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
-  private User testUser;
-  private Player player;
+	private User testUser;
+	private Player player;
 
-  private final Collider collider = Colliders.anyCollider();
-  private final FluidFlow waterflow = Fluids.anyWaterflow();
-  private final SimpleCollider simpleCollider = Colliders.anySimpleCollider();
-  private final PlayerInventory inventory = new MockEmptyInventory();
+	private final Collider collider = Colliders.anyCollider();
+	private final FluidFlow waterflow = Fluids.anyWaterflow();
+	private final SimpleCollider simpleCollider = Colliders.anySimpleCollider();
+	private final PlayerInventory inventory = new MockEmptyInventory();
 
-  @BeforeEach
-  void setUp() {
-    MinecraftVersion.setCurrentVersion(MinecraftVersions.VER1_21_4);
-    com.comphenix.protocol.utility.MinecraftVersion.setCurrentVersion(com.comphenix.protocol.utility.MinecraftVersion.v1_21_4);
+	@BeforeEach
+	void setUp() {
+		MinecraftVersion.setCurrentVersion(MinecraftVersions.VER1_21_4);
+		com.comphenix.protocol.utility.MinecraftVersion.setCurrentVersion(com.comphenix.protocol.utility.MinecraftVersion.v1_21_4);
 
-    MockShapeResolverPipeline mockDrill = new MockShapeResolverPipeline();
-    DrillResolver.manualInit(mockDrill);
+		DrillResolver.manualInit(MockShapeResolverPipeline.createStoneDefault());
+		WorldBorder worldBorder = MockWorldBorder.create();
 
-    if (waterflow == null) {
-      throw new IllegalStateException("Waterflow is null");
-    }
+		World world = FakeWorldFactory.createWorld(
+			(methodName, args) -> {
+				switch (methodName) {
+					case "isChunkLoaded":
+					case "isChunkInUse":
+						return true;
+					case "getWorldBorder":
+						return worldBorder;
+				}
+				return null;
+			}
+		);
 
-    WorldBorder worldBorder = new MockWorldBorder(
-      new Location(null, 0, 0, 0)
-    );
+		Location location = new Location(world, 0, 20, 0);
+		player = FakePlayerFactory.createPlayer(
+			(methodName, args) -> {
+				switch (methodName) {
+					case "getWorld":
+						return world;
+					case "getLocation":
+						return location;
+					case "getUniqueId":
+						return EMPTY_ID;
+				}
+				return null;
+			}
+		);
 
-    World world = FakeWorldFactory.createWorld(
-      (methodName, args) -> {
-        switch (methodName) {
-          case "isChunkLoaded":
-          case "isChunkInUse":
-            return true;
-          case "getWorldBorder":
-            return worldBorder;
-        }
-        return null;
-      }
-    );
+		int protocolVersion = 47;
+		MockFullBlockStaticPlane plane = new MockFullBlockStaticPlane();
+		plane.horizontalFill(0);
 
-    Location location = new Location(world, 0, 20, 0);
-    player = FakePlayerFactory.createPlayer(
-      (methodName, args) -> {
-        switch (methodName) {
-          case "getInventory":
-            return inventory;
-          case "getWorld":
-            return world;
-          case "getLocation":
-            return location;
-          case "getUniqueId":
-            return EMPTY_ID;
-          case "getActivePotionEffects":
-            return Collections.emptyList();
-          case "getHealth":
-            return 20.0;
-          case "getFoodLevel":
-            return 20;
-          case "isFlying":
-          case "getAllowFlight":
-          case "isSprinting":
-          case "isSneaking":
-            return false;
-          case "getFallDistance":
-            return 0.0f;
-          case "getGameMode":
-            return SURVIVAL;
-          case "getFlySpeed":
-          case "getWalkSpeed":
-            return 0.2f;
-          case "getEntityId":
-            return 1;
-        }
-        return null;
-      }
-    );
+		testUser = UserFactory.createTestUserFor(player, s -> {
+			switch (s) {
+				case "collider":
+					return collider;
+				case "waterflow":
+					return waterflow;
+				case "simplifiedCollider":
+					return simpleCollider;
+				case "blockCache":
+					return plane;
+				case "protocolVersion":
+					return protocolVersion;
+			}
+			return null;
+		});
+		UserRepository.manuallyRegisterUser(player, testUser);
+	}
 
-    int protocolVersion = 47;
-    MockFullBlockStaticPlane plane = new MockFullBlockStaticPlane();
-    plane.horizontalFill(1);
-    testUser = UserFactory.createTestUserFor(player, s -> {
-      switch (s) {
-        case "collider":
-          return collider;
-        case "waterflow":
-          return waterflow;
-        case "simplifiedCollider":
-          return simpleCollider;
-        case "blockCache":
-          return plane;
-        case "protocolVersion":
-          return protocolVersion;
-      }
-      return null;
-    });
-    UserRepository.manuallyRegisterUser(player, testUser);
-  }
+	@Test
+	public void testy() {
+		Simulator simulator = Simulators.PLAYER;
+		MovementMetadata metadata = testUser.meta().movement();
 
-  @Test
-  public void testy() {
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+		MovementConfiguration config = MovementConfiguration.blank().pressingW();
 
-    Simulator simulator = Simulators.PLAYER;
-    Motion motion;
-    MovementMetadata metadata = testUser.meta().movement();
+		for (int i = 0; i < 150; i++) {
+			metadata.stepHeight = simulator.stepHeight();
 
-    for (int i = 0; i < 200; i++) {
-      motion = metadata.mutableBaseMotionCopy();
-      simulator.simulatePreTick(
-        testUser, motion.copy(), metadata
-      );
-      Simulation simulation = simulator.simulateTick(
-        testUser, motion.copy(), metadata.unmodifiable(), MovementConfiguration.noAction().withJump()
-      );
-      motion = simulation.motion();
-      simulator.simulateAfterTick(
-        testUser, metadata, metadata.verifiedPosition(), motion
-      );
-      Location lastLocation = metadata.lastPosition().toLocation(player.getWorld());
-      Location newLocation = lastLocation.clone().add(motion.toBukkitVector());
-      metadata.setVerifiedLocation(
-        lastLocation, "AUTOACCEPT"
-      );
-      metadata.positionX = newLocation.getX();
-      metadata.positionY = newLocation.getY();
-      metadata.positionZ = newLocation.getZ();
-      metadata.setBoundingBox(
-        BoundingBox.fromPosition(testUser, metadata.unmodifiable(), newLocation)
-      );
-      metadata.setBaseMotion(motion);
-      System.out.println(motion);
-    }
-  }
+			simulator.simulatePreTick(
+				testUser, null, metadata
+			);
+			Motion motion = metadata.mutableBaseMotionCopy();
+			metadata.refreshFriction(false);
+
+			Simulation simulation = simulator.simulateTick(
+				testUser, motion.copy(), metadata.unmodifiable(), config
+			);
+
+			motion = simulation.motion().copy();
+			Position newPosition = metadata.verifiedPosition().add(motion);
+
+			metadata.updateMovement(
+				newPosition.getX(), newPosition.getY(), newPosition.getZ(),
+				0, 0,
+				true, true
+			);
+
+			assertEquals(
+				0.0,
+				simulation.accuracy(metadata.motion()),
+				1.0E-9,
+				"Predicted movement must match the generated packet at tick " + i
+			);
+
+			metadata.assumeOccurred(simulation);
+
+			simulator.simulateAfterTick(
+				testUser, metadata, metadata.position(), motion
+			);
+
+			metadata.setBaseMotion(motion);
+			metadata.lastOnGround = metadata.onGround;
+
+			metadata.setVerifiedPosition(
+				metadata.position(), "AUTOACCEPT"
+			);
+
+			System.out.println(metadata.position() + " " + metadata.mutableBaseMotionCopy());
+
+			assertTrue(
+				metadata.verifiedPositionY() >= 1.0,
+				"Player fell through the platform at tick " + i + ": " + metadata.verifiedPosition()
+			);
+
+			assertTrue(
+				Math.abs(metadata.verifiedPositionX()) <= 100 && Math.abs(metadata.verifiedPositionZ()) <= 100,
+				"Player flew away at tick " + i + ": " + metadata.verifiedPosition()
+			);
+		}
+
+		assertEquals(1.0, metadata.verifiedPositionY(), 1.0E-9);
+	}
 }

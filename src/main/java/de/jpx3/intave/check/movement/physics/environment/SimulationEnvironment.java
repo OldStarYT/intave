@@ -2,6 +2,7 @@ package de.jpx3.intave.check.movement.physics.environment;
 
 import de.jpx3.intave.block.fluid.Fluid;
 import de.jpx3.intave.check.movement.physics.Pose;
+import de.jpx3.intave.check.movement.physics.Simulation;
 import de.jpx3.intave.player.collider.complex.ColliderResult;
 import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
@@ -24,6 +25,15 @@ public interface SimulationEnvironment {
    */
   Vector lookVector();
 
+  /**
+   * Enter the new (untrusted) movement into the environment.
+   */
+  void updateMovement(
+	  double newPositionX, double newPositionY, double newPositionZ,
+	  float newRotationYaw, float newRotationPitch,
+	  boolean hasMovement, boolean hasRotation
+  );
+
   default Position position() {
     return new Position(positionX(), positionY(), positionZ());
   }
@@ -42,6 +52,8 @@ public interface SimulationEnvironment {
   double verifiedPositionX();
   double verifiedPositionY();
   double verifiedPositionZ();
+
+  void setVerifiedPosition(Position position, String reason);
 
   /**
    * last position
@@ -171,6 +183,8 @@ public interface SimulationEnvironment {
 
   Fluid interactingFluid();
   void setInteractingFluid(Fluid interactingFluid);
+
+  void assumeOccurred(Simulation simulation);
 
   default SimulationEnvironment unmodifiable() {
     return UnmodifiableSimulationEnvironmentView.of(this);

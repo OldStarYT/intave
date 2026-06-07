@@ -1,8 +1,6 @@
 package de.jpx3.intave.user.meta;
 
-import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.IntavePlugin;
@@ -25,9 +23,7 @@ import de.jpx3.intave.entity.datawatcher.DataWatcherAccess;
 import de.jpx3.intave.executor.RateLimiter;
 import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.math.MathHelper;
-import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.tracker.entity.Entity;
-import de.jpx3.intave.module.tracker.player.PacketLogging;
 import de.jpx3.intave.packet.Relative;
 import de.jpx3.intave.player.Effects;
 import de.jpx3.intave.player.ItemProperties;
@@ -216,13 +212,12 @@ public final class MovementMetadata implements SimulationEnvironment {
   private double resetMotion, frictionPosSubtraction;
   private double motionX, motionY, motionZ;
   private boolean sprintingAllowed;
-  private float yawSine, yawCosine, friction;
+  private float yawSine = 0, yawCosine = 1, friction;
   private Pose pose = Pose.STANDING;
   private Simulator simulator = Simulators.PLAYER;
   @Nullable
   public Position mainSupportingBlockPos = null;
-  private boolean mainSupportingBlockPosLocking = false;
-  private Material frictionMaterial = Material.AIR, previousFrictionMaterial = Material.AIR;
+	private Material frictionMaterial = Material.AIR, previousFrictionMaterial = Material.AIR;
   private Material collideMaterial = Material.AIR, previousCollideMaterial = Material.AIR;
 
   private ColliderResult beforeMoveCollider = null;
@@ -306,6 +301,7 @@ public final class MovementMetadata implements SimulationEnvironment {
     verifiedPositionY = positionY;
     verifiedPositionZ = positionZ;
     verifiedPositionOrigin = "initial";
+    setRotation(0, 0);
     updateSize();
   }
 
@@ -319,12 +315,10 @@ public final class MovementMetadata implements SimulationEnvironment {
 
   @DispatchTarget
   public void updateMovement(
-    PacketContainer packet,
+    double newPositionX, double newPositionY, double newPositionZ,
+    float newRotationYaw, float newRotationPitch,
     boolean hasMovement, boolean hasRotation
   ) {
-    boolean vehicleMove = packet.getType() == PacketType.Play.Client.VEHICLE_MOVE;
-    boolean containsCollision = MinecraftVersions.VER1_21_4.atOrAbove();
-    PacketLogging logging = Modules.tracker().packetLogging();
     if (!boundingBoxSetup) {
       setupDefaults();
     }
@@ -337,17 +331,12 @@ public final class MovementMetadata implements SimulationEnvironment {
       sprintResetNextTick = false;
     }
     if (hasMovement) {
-      StructureModifier<Double> position = packet.getDoubles();
-      if (containsCollision && vehicleMove) {
-        position = packet.getStructures().read(0).getDoubles();
-      }
-      positionX = position.read(0);
-      positionY = position.read(1);
-      positionZ = position.read(2);
+      positionX = newPositionX;
+      positionY = newPositionY;
+      positionZ = newPositionZ;
       motionX = positionX - verifiedPositionX;
       motionY = positionY - verifiedPositionY;
       motionZ = positionZ - verifiedPositionZ;
-      logging.logSystemMessage(user, () -> "MOTION LOGIC: Received motion: " + motionX + " " + motionY + " " + motionZ);
       boolean falling = motionY() <= 0.0D;
       if (falling && Effects.slowFallingEffectActive(player)) {
         artificialFallDistance = 0f;
@@ -373,19 +362,22 @@ public final class MovementMetadata implements SimulationEnvironment {
     lastRotationYaw = rotationYaw;
     lastRotationPitch = rotationPitch;
     if (hasRotation) {
-      StructureModifier<Float> rotation = packet.getFloat();
-      rotationYaw = rotation.read(0);
-      rotationPitch = rotation.read(1);
-      lookVector = vectorForRotation(rotationYaw, rotationPitch);
-      float rotationYawInRadians = rotationYaw * (float) Math.PI / 180.0F;
-      yawSine = sin(rotationYawInRadians);
-      yawCosine = cos(rotationYawInRadians);
+      setRotation(newRotationYaw, newRotationPitch);
     }
     recheckWebStateFromLastTick();
     if (hasMovement || hasRotation) {
       updatePose();
     }
     updateSlotSwitch();
+  }
+
+  private void setRotation(float newRotationYaw, float newRotationPitch) {
+    rotationYaw = newRotationYaw;
+    rotationPitch = newRotationPitch;
+    lookVector = vectorForRotation(rotationYaw, rotationPitch);
+    float rotationYawInRadians = rotationYaw * (float) Math.PI / 180.0F;
+    yawSine = sin(rotationYawInRadians);
+    yawCosine = cos(rotationYawInRadians);
   }
 
   @Override
@@ -891,7 +883,7 @@ public final class MovementMetadata implements SimulationEnvironment {
     if (clientData.waterUpdate()) {
       return aquaticUpdateInLava;
     } else {
-      BoundingBox lavaBoundingBox = boundingBox.grow(
+      BoundingBox lavaBoundingBox = boundingBox().grow(
         -0.1f,
         -0.4000000059604645D,
         -0.1f
@@ -1122,6 +1114,27 @@ public final class MovementMetadata implements SimulationEnvironment {
   }
 
   @Override
+  public void assumeOccurred(Simulation simulation) {
+    ColliderResult collider = simulation.collider();
+    onGround = collider.onGround();
+    collidedHorizontally = collider.collidedHorizontally();
+    collidedVertically = collider.collidedVertically();
+    physicsResetMotionX = collider.resetMotionX();
+    physicsResetMotionZ = collider.resetMotionZ();
+    boolean step = collider.step();
+	  stepHeightThisMove = step ? collider.stepHeightThisMove() : 0;
+    if (step) {
+      pastStep = 0;
+    }
+    if (collider.edgeSneak()) {
+      pastEdgeSneak = 0;
+    }
+    if (user.meta().protocol().newBlockEntityIntersectionLogic()) {
+      setBeforeMoveColliderResult(collider);
+    }
+  }
+
+  @Override
   public Material collideMaterial() {
     return collideMaterial;
   }
@@ -1161,6 +1174,7 @@ public final class MovementMetadata implements SimulationEnvironment {
     return vehicle;
   }
 
+  @Deprecated
   public Location verifiedLocation() {
     return verifiedLocation;
   }
@@ -1344,6 +1358,14 @@ public final class MovementMetadata implements SimulationEnvironment {
   @Override
   public double verifiedPositionZ() {
     return verifiedPositionZ;
+  }
+
+  @Override
+  public void setVerifiedPosition(Position position, String reason) {
+    this.verifiedPositionX = position.getX();
+    this.verifiedPositionY = position.getY();
+    this.verifiedPositionZ = position.getZ();
+    this.verifiedPositionOrigin = reason;
   }
 
   @Override

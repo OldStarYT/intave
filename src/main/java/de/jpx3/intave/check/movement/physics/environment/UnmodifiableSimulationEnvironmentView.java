@@ -2,6 +2,7 @@ package de.jpx3.intave.check.movement.physics.environment;
 
 import de.jpx3.intave.block.fluid.Fluid;
 import de.jpx3.intave.check.movement.physics.Pose;
+import de.jpx3.intave.check.movement.physics.Simulation;
 import de.jpx3.intave.player.collider.complex.ColliderResult;
 import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
@@ -30,6 +31,11 @@ public final class UnmodifiableSimulationEnvironmentView implements SimulationEn
 	@Override
 	public Vector lookVector() {
 		return delegate.lookVector();
+	}
+
+	@Override
+	public void updateMovement(double newPositionX, double newPositionY, double newPositionZ, float newRotationYaw, float newRotationPitch, boolean hasMovement, boolean hasRotation) {
+		throw new UnsupportedOperationException("This environment view is unmodifiable");
 	}
 
 	@Override
@@ -70,6 +76,11 @@ public final class UnmodifiableSimulationEnvironmentView implements SimulationEn
 	@Override
 	public double verifiedPositionZ() {
 		return delegate.verifiedPositionZ();
+	}
+
+	@Override
+	public void setVerifiedPosition(Position position, String reason) {
+		throw new UnsupportedOperationException("This environment view is unmodifiable");
 	}
 
 	@Override
@@ -494,6 +505,11 @@ public final class UnmodifiableSimulationEnvironmentView implements SimulationEn
 
 	@Override
 	public void setInteractingFluid(Fluid interactingFluid) {
+		throw new UnsupportedOperationException("Cannot modify unmodifiable view");
+	}
+
+	@Override
+	public void assumeOccurred(Simulation simulation) {
 		throw new UnsupportedOperationException("Cannot modify unmodifiable view");
 	}
 

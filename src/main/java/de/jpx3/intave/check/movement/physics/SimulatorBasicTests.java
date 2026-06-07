@@ -106,7 +106,7 @@ public final class SimulatorBasicTests extends Tests {
     }
 
     Simulator simulator = Simulators.PLAYER;
-    MovementConfiguration configuration = MovementConfiguration.noAction();
+    MovementConfiguration configuration = MovementConfiguration.blank();
     TestSimulationEnvironment environment = new TestSimulationEnvironment();
 
     environment.setPositionY(250);

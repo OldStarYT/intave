@@ -18,13 +18,14 @@ import net.bytebuddy.matcher.ElementMatchers;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.function.BiFunction;
 
 public final class FakeWorldFactory {
@@ -53,7 +54,7 @@ public final class FakeWorldFactory {
             return result;
           }
         }
-        throw new UnsupportedOperationException("Method " + methodName + " is not supported for this testplayer");
+        throw new UnsupportedOperationException("Method " + methodName + " is not supported for this mock world");
       }
     });
     ElementMatcher.Junction<ByteCodeElement> callbackFilter = ElementMatchers.not(ElementMatchers.isDeclaredBy(Object.class)

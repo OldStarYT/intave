@@ -3,7 +3,6 @@ package de.jpx3.intave.check.movement.physics;
 import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.block.access.VolatileBlockAccess;
-import de.jpx3.intave.block.fluid.Fluid;
 import de.jpx3.intave.block.fluid.Fluids;
 import de.jpx3.intave.block.physics.BlockPhysics;
 import de.jpx3.intave.block.physics.BlockProperties;
@@ -173,7 +172,7 @@ class BaseSimulator extends Simulator {
       }
     }
 
-    if (jumped) {
+    if (jumped && environment.lastOnGround()) {
       boolean allowJumpInLiquid = false;
       if (
         protocol.waterUpdate() && inWater &&

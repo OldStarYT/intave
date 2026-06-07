@@ -3,12 +3,12 @@ package de.jpx3.intave.check.movement;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
-import de.jpx3.intave.adapter.MinecraftVersion;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.access.check.MitigationStrategy;
 import de.jpx3.intave.access.player.trust.TrustFactor;
+import de.jpx3.intave.adapter.MinecraftVersion;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.analytics.GlobalStatisticsRecorder;
 import de.jpx3.intave.annotate.DispatchTarget;
@@ -132,8 +132,7 @@ public final class Physics extends Check {
   public void receiveMovement(User user, boolean withMovement, boolean withRotation) {
     MetadataBundle meta = user.meta();
     MovementMetadata movementData = meta.movement();
-    ProtocolMetadata clientData = meta.protocol();
-    Simulator simulator = selectSimulator(user);
+	  Simulator simulator = selectSimulator(user);
     movementData.setSimulator(simulator);
     movementData.stepHeight = simulator.stepHeight();
     simulator.simulatePreTick(user, null, movementData);
@@ -143,30 +142,13 @@ public final class Physics extends Check {
     // simulation
     Simulation simulation;
     try {
-      simulation = simulationProcessor.simulate(user, movementData.simulator());
+      simulation = simulationProcessor.simulate(user, simulator);
     } catch (IllegalStateException exception) {
       user.kick("Exception while simulating movement");
       exception.printStackTrace();
       return;
     }
-    ColliderResult collider = simulation.collider();
-    movementData.onGround = collider.onGround();
-    movementData.collidedHorizontally = collider.collidedHorizontally();
-    movementData.collidedVertically = collider.collidedVertically();
-    movementData.physicsResetMotionX = collider.resetMotionX();
-    movementData.physicsResetMotionZ = collider.resetMotionZ();
-    boolean step = collider.step();
-    movementData.step = step;
-    movementData.stepHeightThisMove = step ? collider.stepHeightThisMove() : 0;
-    if (step) {
-      movementData.pastStep = 0;
-    }
-    if (collider.edgeSneak()) {
-      movementData.pastEdgeSneak = 0;
-    }
-    if (clientData.newBlockEntityIntersectionLogic()) {
-      movementData.setBeforeMoveColliderResult(collider);
-    }
+    movementData.assumeOccurred(simulation);
 
     Timings.CHECK_PHYSICS_PROC_TOT.stop();
     Timings.CHECK_PHYSICS_EVAL.start();

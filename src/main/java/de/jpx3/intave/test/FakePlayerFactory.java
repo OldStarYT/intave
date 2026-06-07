@@ -20,6 +20,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.metadata.MetadataValue;
 
 import java.lang.reflect.Constructor;
@@ -67,6 +68,8 @@ public final class FakePlayerFactory {
       return null;
     });
 
+    PlayerInventory inventory = new MockEmptyInventory();
+
     // default fallbacks
     methods.add((methodName, args) -> {
       switch (methodName) {
@@ -80,6 +83,7 @@ public final class FakePlayerFactory {
         case "getAllowFlight":
         case "isSprinting":
         case "isSneaking":
+        case "isSleeping":
           return false;
         case "getFallDistance":
           return 0.0f;
@@ -91,7 +95,7 @@ public final class FakePlayerFactory {
         case "getEntityId":
           return 100000;
         case "getInventory":
-          return new MockEmptyInventory();
+          return inventory;
         case "getActivePotionEffects":
           return Collections.emptyList();
       }

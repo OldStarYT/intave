@@ -37,4 +37,12 @@ public final class MockShapeResolverPipeline implements ShapeResolverPipeline {
     outlineShape.computeIfAbsent(type, t -> new HashMap<>())
       .put(variantIndex, shape);
   }
+
+
+  public static MockShapeResolverPipeline createStoneDefault() {
+    MockShapeResolverPipeline pipe = new MockShapeResolverPipeline();
+    pipe.setCollisionShape(Material.STONE, 0, BlockShapes.originCube());
+    pipe.setOutlineShape(Material.STONE, 0, BlockShapes.originCube());
+    return pipe;
+  }
 }
