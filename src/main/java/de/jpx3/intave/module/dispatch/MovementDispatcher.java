@@ -13,7 +13,6 @@ import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.access.player.trust.TrustFactor;
 import de.jpx3.intave.adapter.MinecraftVersions;
-import de.jpx3.intave.annotate.Nullable;
 import de.jpx3.intave.block.access.VolatileBlockAccess;
 import de.jpx3.intave.block.collision.Collision;
 import de.jpx3.intave.block.shape.BlockShape;
@@ -24,6 +23,7 @@ import de.jpx3.intave.block.variant.BlockVariant;
 import de.jpx3.intave.check.CheckService;
 import de.jpx3.intave.check.movement.Physics;
 import de.jpx3.intave.check.movement.Timer;
+import de.jpx3.intave.check.movement.physics.MoveMetric;
 import de.jpx3.intave.check.movement.physics.Pose;
 import de.jpx3.intave.check.world.InteractionRaytrace;
 import de.jpx3.intave.executor.Synchronizer;
@@ -71,6 +71,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static de.jpx3.intave.IntaveControl.DEBUG_MOVEMENT_IGNORE;
+import static de.jpx3.intave.check.movement.physics.MoveMetric.*;
 import static de.jpx3.intave.math.MathHelper.formatDouble;
 import static de.jpx3.intave.module.feedback.FeedbackOptions.SELF_SYNCHRONIZATION;
 import static de.jpx3.intave.module.linker.packet.PacketId.Client.*;
@@ -791,17 +792,8 @@ public final class MovementDispatcher extends Module {
     } else {
       movement.pastElytraFlying++;
     }
-//    if (movement.onGround && movement.elytraFlying) {
-//      player.sendMessage(ChatColor.RED + "Deactivated elytra flying");
-//      movement.elytraFlying = false;
-//    }//
-    if (movement.inWeb) {
-      movement.pastInWeb = 0;
-      movement.webTicks++;
-    } else {
-      movement.pastInWeb++;
-      movement.webTicks = 0;
-    }
+    movement.trackMetric(MoveMetric.IN_WEB, movement.inWeb);
+
     if (inventoryData.inventoryOpen()) {
       movement.pastInventoryOpen = 0;
     } else {
@@ -810,21 +802,11 @@ public final class MovementDispatcher extends Module {
     if (movement.physicsJumped) {
       movement.lastJump = System.currentTimeMillis();
     }
-    if (movement.isSneaking()) {
-      movement.ticksSinceLastSneak = 0;
-      movement.ticksSneaking++;
-      if (movement.ticksSneaking > 1) {
-        movement.lastSneakingTimestamps = System.currentTimeMillis();
-      }
-    } else {
-      movement.ticksSneaking = 0;
-      movement.ticksSinceLastSneak++;
+    movement.trackMetric(SNEAKING, movement.isSneaking());
+    if (movement.ticks(SNEAKING) > 1) {
+      movement.lastSneakingTimestamps = System.currentTimeMillis();
     }
-    if (movement.isSprinting()) {
-      movement.ticksSprinting++;
-    } else {
-      movement.ticksSprinting = 0;
-    }
+    movement.trackMetric(SPRINTING, movement.isSprinting());
     attack.attackPastTicks++;
     movement.pastBlockPlacement++;
     inventoryData.pastSlotSwitch++;
@@ -837,11 +819,7 @@ public final class MovementDispatcher extends Module {
     movement.pastStep++;
     movement.pastEdgeSneak++;
     movement.pastSprintChange++;
-    if (movement.inWater) {
-      movement.waterTicks++;
-    } else {
-      movement.waterTicks = 0;
-    }
+    movement.trackMetric(IN_WATER, movement.inWater);
     movement.reduceTicks = 0;
     movement.ignoredAttackReduce = false;
     if (hasMovement || hasRotation) {
@@ -1297,7 +1275,7 @@ public final class MovementDispatcher extends Module {
         }
         break;
       case STOP_SPRINTING:
-        int ticksSprinting = movementData.ticksSprinting;
+        int ticksSprinting = movementData.ticks(SPRINTING);
         movementData.setSprinting(false);
         if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
           user.player().sendMessage(ChatColor.BLACK + "Stop sprinting after " + ticksSprinting + " " + meta.attack().attackPastTicks);
@@ -1358,7 +1336,6 @@ public final class MovementDispatcher extends Module {
     if (System.currentTimeMillis() - punishmentData.timeLastSneakToggleCancel < 2000) {
       cancelable.setCancelled(true);
     }
-    movementData.ticksSinceLastSneak = 0;
     movementData.pastVehicleExitTicks = 0;
     if (movementData.isInVehicle()) {
       movementData.dismountRidingEntity("Sneak exit");
@@ -1375,71 +1352,12 @@ public final class MovementDispatcher extends Module {
     MovementMetadata movementData = user.meta().movement();
     movementData.sneaking = false;
     if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
-      user.player().sendMessage(ChatColor.RED + "Stop sneaking after " + movementData.ticksSneaking);
+      user.player().sendMessage(ChatColor.RED + "Stop sneaking after " + movementData.ticks(SNEAKING));
     }
   }
 
   private boolean allowSprinting(User user) {
     return !user.meta().inventory().inventoryOpen();
-  }
-
-  public static void applyVelocitySuperposition(User user, Motion velocity) {
-    MetadataBundle meta = user.meta();
-    MovementMetadata movementData = meta.movement();
-    ViolationMetadata violationLevelData = meta.violationLevel();
-
-    movementData.pastExternalVelocityResetCache = movementData.pastExternalVelocity;
-    movementData.baseMotionXBeforeVelocityResetCache = movementData.baseMotionXBeforeVelocity;
-    movementData.baseMotionYBeforeVelocityResetCache = movementData.baseMotionYBeforeVelocity;
-    movementData.baseMotionZBeforeVelocityResetCache = movementData.baseMotionZBeforeVelocity;
-    movementData.baseMotionXResetCache = movementData.baseMotionX;
-    movementData.baseMotionYResetCache = movementData.baseMotionY;
-    movementData.baseMotionZResetCache = movementData.baseMotionZ;
-    movementData.willReceiveSetbackVelocityResetCache = movementData.willReceiveSetbackVelocity;
-
-    if (!violationLevelData.isInActiveTeleportBundle) {
-      movementData.baseMotionXBeforeVelocity = movementData.baseMotionX;
-      movementData.baseMotionYBeforeVelocity = movementData.baseMotionY;
-      movementData.baseMotionZBeforeVelocity = movementData.baseMotionZ;
-      movementData.baseMotionX = velocity.motionX();
-      movementData.baseMotionY = velocity.motionY();
-      movementData.baseMotionZ = velocity.motionZ();
-//      user.player().sendMessage("Applied velocity " + velocity);
-      movementData.lastVelocity = new Vector(velocity.motionX(), velocity.motionY(), velocity.motionZ());
-    }
-  }
-
-  public static void collapseVelocitySuperposition(User user, @Nullable Motion velocity) {
-    if (velocity != null) {
-      MetadataBundle meta = user.meta();
-      MovementMetadata movementData = meta.movement();
-      movementData.pastVelocity = 0;
-//      movementData.pendingVelocityPackets.decrementAndGet();
-      if (!movementData.willReceiveSetbackVelocity) {
-        movementData.pastExternalVelocity = 0;
-      }
-      movementData.willReceiveSetbackVelocity = false;
-//      user.player().sendMessage("Collapsed velocity " + velocity);
-//      if (!movementData.willReceiveSetbackVelocity) {
-//        movementData.pastExternalVelocity = 0;
-//      }
-//      movementData.willReceiveSetbackVelocity = false;
-//      user.player().sendMessage("Collapsed velocity " + velocity + ", pending: " + movementData.pendingVelocityPackets.get());
-    }
-  }
-
-  public static void resetVelocitySuperposition(User user) {
-    MetadataBundle meta = user.meta();
-    MovementMetadata movementData = meta.movement();
-
-    movementData.pastExternalVelocity = movementData.pastExternalVelocityResetCache;
-    movementData.baseMotionXBeforeVelocity = movementData.baseMotionXBeforeVelocityResetCache;
-    movementData.baseMotionYBeforeVelocity = movementData.baseMotionYBeforeVelocityResetCache;
-    movementData.baseMotionZBeforeVelocity = movementData.baseMotionZBeforeVelocityResetCache;
-    movementData.baseMotionX = movementData.baseMotionXResetCache;
-    movementData.baseMotionY = movementData.baseMotionYResetCache;
-    movementData.baseMotionZ = movementData.baseMotionZResetCache;
-    movementData.willReceiveSetbackVelocity = movementData.willReceiveSetbackVelocityResetCache;
   }
 
   private Motion readExplosionMotion(PacketEvent event) {

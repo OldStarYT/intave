@@ -82,8 +82,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean sprinting, lastSprinting, hasSprintSpeed, sneaking, lastSneaking;
   public int sprintSneakFaults;
   public boolean acceptSneakFaults = true;
-  public int ticksSneaking, ticksSprinting;
-  public int ticksSinceLastSneak;
   public float rotationYaw, rotationPitch;
   public float lastRotationYaw, lastRotationPitch;
   public long recordedMoves;
@@ -105,7 +103,11 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean inWeb;
   public boolean checkWebStateAgainNextTick = false;
   public int pastPushedByWaterFlow = 100;
-  public int pastElytraFlying = 100, pastVelocity = 100, pastExternalVelocity = 100, pastExternalVelocityResetCache, pastInWeb = 100, pastWaterMovement = 100, pastLavaMovement = 100;
+  public int pastElytraFlying = 100;
+	public int pastVelocity = 100;
+	public int pastExternalVelocity = 100;
+  public int pastWaterMovement = 100;
+	public int pastLavaMovement = 100;
   public int pastLongTeleport = 100;
   public int pastInventoryOpen = 100;
   public int pastBlockPlacement = 100;
@@ -114,8 +116,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   public int pastEntityUse = 100;
   public int pastSprintChange = 100;
   public int pastReceiveVelocityPacket = 100;
-  public int waterTicks = 0;
-  public int webTicks = 0;
   public int reduceTicks = 0;
   public boolean onLadderLast;
   public boolean aquaticUpdateInLava;
@@ -125,8 +125,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean invalidMovement, suspiciousMovement;
   public double baseMotionX, baseMotionY, baseMotionZ; // base or last motion, exclusively for the physics check
   public double baseMotionXBeforeVelocity, baseMotionYBeforeVelocity, baseMotionZBeforeVelocity;
-  public double baseMotionXResetCache, baseMotionYResetCache, baseMotionZResetCache;
-  public double baseMotionXBeforeVelocityResetCache, baseMotionYBeforeVelocityResetCache, baseMotionZBeforeVelocityResetCache;
   public boolean endMotionXOverride, endMotionYOverride, endMotionZOverride;
   public double endMotionXOverrideValue, endMotionYOverrideValue, endMotionZOverrideValue;
   public int pastRiptideSpin = 100;
@@ -159,8 +157,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   // To prevent a slot switch if the player changes his slot by itself we have to check if the movement is 2x wrong
   // If the player does not have an active use-item this field will be set to 0
   public int physicsEatingSlotSwitchVL;
-  // Phase prevention
-  public List<BoundingBox> phaseIntersectingBoundingBoxes;
   public boolean currentlyInBlock;
   // Entity collision
   public boolean enforceBoatStep;
@@ -174,7 +170,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean dropPostTickMotionProcessing;
   public boolean willReceiveSetbackVelocity;
   public boolean willReceiveFinalSetbackVelocity;
-  public boolean willReceiveSetbackVelocityResetCache;
   public int lastTeleport = 100;
   public int teleportId;
   public volatile boolean awaitTeleport = false, expectTeleport = false, awaitOutgoingTeleport = false;
@@ -244,6 +239,16 @@ public final class MovementMetadata implements SimulationEnvironment {
   private volatile Location verifiedLocation;
   public Input input = new Input();
   public Input lastInput = new Input();
+
+  private final Map<MoveMetric, Integer> activeTracker = new EnumMap<>(MoveMetric.class);
+  private final Map<MoveMetric, Integer> pastTracker = new EnumMap<>(MoveMetric.class);
+
+  {
+    for (MoveMetric value : MoveMetric.values()) {
+      activeTracker.put(value, 0);
+      pastTracker.put(value, 100);
+    }
+  }
 
   public MovementMetadata(Player player, User user) {
     this.player = player;
@@ -602,7 +607,6 @@ public final class MovementMetadata implements SimulationEnvironment {
     return plate != null && plate.getType() == Material.ELYTRA;
   }
 
-  @Deprecated
   public void updateEyesInWater() {
     double yPos = positionY + eyeHeight() - (double) 0.11111f;
     this.eyesInWater = interactingFluid != null && interactingFluid.isOfWater();
@@ -898,11 +902,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   }
 
   @Override
-  public int pastInWeb() {
-    return pastInWeb;
-  }
-
-  @Override
   public void resetInWeb() {
     inWeb = false;
   }
@@ -1078,6 +1077,24 @@ public final class MovementMetadata implements SimulationEnvironment {
     pastVehicleExitTicks++;
   }
 
+  public void trackMetric(MoveMetric metric, boolean active) {
+    if (active) {
+      activeTracker.put(metric, activeTracker.getOrDefault(metric, 0) + 1);
+      pastTracker.put(metric, 0);
+    } else {
+      activeTracker.put(metric, 0);
+      pastTracker.put(metric, pastTracker.getOrDefault(metric, 100) + 1);
+    }
+  }
+
+  public int ticks(MoveMetric metric) {
+    return activeTracker.getOrDefault(metric, 0);
+  }
+
+  public int past(MoveMetric metric) {
+    return pastTracker.getOrDefault(metric, 100);
+  }
+
   @Override
   public void aquaticUpdateLavaReset() {
     aquaticUpdateInLava = false;
@@ -1106,11 +1123,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   @Override
   public Fluid interactingFluid() {
     return interactingFluid;
-  }
-
-  @Override
-  public void setInteractingFluid(Fluid interactingFluid) {
-    this.interactingFluid = interactingFluid;
   }
 
   @Override
@@ -1568,5 +1580,12 @@ public final class MovementMetadata implements SimulationEnvironment {
   @Override
   public int pastNearbyCollisionInaccuracy() {
     return pastNearbyCollisionInaccuracy;
+  }
+
+  private final SimulationEnvironment unmodifiableView = SimulationEnvironment.super.unmodifiable();
+
+  @Override
+  public SimulationEnvironment unmodifiable() {
+    return unmodifiableView;
   }
 }

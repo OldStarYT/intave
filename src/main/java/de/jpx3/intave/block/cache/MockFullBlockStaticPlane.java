@@ -142,4 +142,10 @@ public final class MockFullBlockStaticPlane implements BlockCache {
   public boolean hasOverridesInBounds(int chunkXMinPos, int chunkXMaxPos, int chunkZMinPos, int chunkZMaxPos) {
     return false;
   }
+
+  public static MockFullBlockStaticPlane createWithHorizontalPlaneAt(int posY) {
+    MockFullBlockStaticPlane plane = new MockFullBlockStaticPlane();
+    plane.horizontalFill(posY);
+    return plane;
+  }
 }

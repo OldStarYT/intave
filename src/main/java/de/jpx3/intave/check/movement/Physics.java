@@ -66,6 +66,8 @@ import org.bukkit.util.Vector;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static de.jpx3.intave.check.movement.physics.MoveMetric.IN_WATER;
+import static de.jpx3.intave.check.movement.physics.MoveMetric.IN_WEB;
 import static de.jpx3.intave.diagnostic.message.MessageCategory.SIMFLT;
 import static de.jpx3.intave.diagnostic.message.MessageCategory.SIMFUL;
 import static de.jpx3.intave.math.MathHelper.*;
@@ -135,7 +137,10 @@ public final class Physics extends Check {
 	  Simulator simulator = selectSimulator(user);
     movementData.setSimulator(simulator);
     movementData.stepHeight = simulator.stepHeight();
-    simulator.simulatePreTick(user, null, movementData);
+
+    Motion baseMotion = movementData.mutableBaseMotionCopy();
+    simulator.simulatePreTick(user, baseMotion, movementData);
+    movementData.setBaseMotion(baseMotion);
 
     Timings.CHECK_PHYSICS_PROC_TOT.start();
     predictFlyingPacketBeforeVelocity(user);
@@ -384,7 +389,7 @@ public final class Physics extends Check {
 
     boolean velocityDetected = false;
     boolean checkVelocity = !skipVLCalculation
-      && movementData.pastInWeb > 5
+      && movementData.past(IN_WEB) > 5
       && !movementData.inWater
       && !movementData.collidedWithBoat();
 
@@ -426,7 +431,7 @@ public final class Physics extends Check {
       movementData.endMotionYOverrideValue = predictedY;
     }
 
-    boolean expectProblems = movementData.pastElytraFlying <= 2 || movementData.pastWaterMovement <= 2;
+    boolean expectProblems = movementData.pastElytraFlying <= 2 || movementData.past(IN_WATER) <= 2;
 
     if (distance > 0.01 && !expectProblems && (verticalViolationIncrease > 5 || horizontalViolationIncrease > 5)) {
       if (Math.abs(receivedMotionX) > 0.15 && differenceX > 0.025) {

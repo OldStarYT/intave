@@ -3,7 +3,9 @@ package de.jpx3.intave.packet.reader;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.reflect.StructureModifier;
 import de.jpx3.intave.adapter.MinecraftVersions;
+import de.jpx3.intave.annotate.Nullable;
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.Rotation;
 
 public final class PlayerMoveReader extends AbstractPacketReader {
 	private final static boolean CONTAINS_COLLISION_INFORMATION = MinecraftVersions.VER1_21_3.atOrAbove();
@@ -26,12 +28,28 @@ public final class PlayerMoveReader extends AbstractPacketReader {
 		return movements().read(2);
 	}
 
+	public @Nullable Position position() {
+		if (!hasMovement()) {
+			return null;
+		}
+		StructureModifier<Double> movements = movements();
+		return new Position(movements.read(0), movements.read(1), movements.read(2));
+	}
+
 	public float yaw() {
 		return rotations().read(0);
 	}
 
 	public float pitch() {
 		return rotations().read(1);
+	}
+
+	public @Nullable Rotation rotation() {
+		if (!hasRotation()) {
+			return null;
+		}
+		StructureModifier<Float> rotations = rotations();
+		return new Rotation(rotations.read(0), rotations.read(1));
 	}
 
 	public void setPositionX(double x) {

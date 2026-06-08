@@ -1,5 +1,6 @@
 package de.jpx3.intave.check.movement.physics.environment;
 
+import de.jpx3.intave.annotate.Nullable;
 import de.jpx3.intave.block.fluid.Fluid;
 import de.jpx3.intave.check.movement.physics.Pose;
 import de.jpx3.intave.check.movement.physics.Simulation;
@@ -7,6 +8,7 @@ import de.jpx3.intave.player.collider.complex.ColliderResult;
 import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.Rotation;
 import org.bukkit.Material;
 import org.bukkit.util.Vector;
 
@@ -25,6 +27,7 @@ public interface SimulationEnvironment {
    */
   Vector lookVector();
 
+
   /**
    * Enter the new (untrusted) movement into the environment.
    */
@@ -33,6 +36,23 @@ public interface SimulationEnvironment {
 	  float newRotationYaw, float newRotationPitch,
 	  boolean hasMovement, boolean hasRotation
   );
+
+  default void updateMovement(
+    @Nullable Position newPosition,
+    @Nullable Rotation newRotation
+  ) {
+    boolean hasMovement = newPosition != null;
+    boolean hasRotation = newRotation != null;
+    updateMovement(
+      hasMovement ? newPosition.getX() : 0,
+      hasMovement ? newPosition.getY() : 0,
+      hasMovement ? newPosition.getZ() : 0,
+      hasRotation ? newRotation.yaw() : 0,
+      hasRotation ? newRotation.pitch() : 0,
+      hasMovement,
+      hasRotation
+    );
+  }
 
   default Position position() {
     return new Position(positionX(), positionY(), positionZ());
@@ -121,7 +141,6 @@ public interface SimulationEnvironment {
   void setInWater(boolean inWater);
   boolean inLava();
   boolean inWeb();
-  int pastInWeb();
   void resetInWeb();
   boolean onGround();
 
@@ -171,7 +190,6 @@ public interface SimulationEnvironment {
   void increaseVehicleTicks();
   void resetPushedByWaterFlowTicks();
 
-  @Deprecated
   void updateEyesInWater();
   void aquaticUpdateLavaReset();
 
@@ -182,7 +200,6 @@ public interface SimulationEnvironment {
   float eyeHeight();
 
   Fluid interactingFluid();
-  void setInteractingFluid(Fluid interactingFluid);
 
   void assumeOccurred(Simulation simulation);
 

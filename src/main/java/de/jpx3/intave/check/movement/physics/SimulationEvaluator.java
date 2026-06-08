@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Set;
 
+import static de.jpx3.intave.check.movement.physics.MoveMetric.*;
 import static java.lang.Math.abs;
 
 public final class SimulationEvaluator {
@@ -130,7 +131,7 @@ public final class SimulationEvaluator {
     }
 
     if (movement.receivedFlyingPacketIn(3) && differenceY > 0.001 && protocol.combatUpdate() && movement.pastBlockPlacement > 10) {
-      boolean inLiquid = movement.pastWaterMovement <= 10 || movement.inLava();
+      boolean inLiquid = movement.past(IN_WATER) <= 10 || movement.inLava();
       int allowedPackets = Hypot.fast(movement.motionX(), movement.motionZ()) < 0.03 ? 3 : 1;
       if (inLiquid || movement.physicsPacketRelinkFlyVL++ <= allowedPackets) {
         verticalLegitimateDeviation = Math.max(verticalLegitimateDeviation, inLiquid ? 0.1 : 0.03);
@@ -166,20 +167,20 @@ public final class SimulationEvaluator {
     }
 
     boolean criticalWeb = receivedMotionY > -0.01
-        && movement.pastInWeb < 10
+        && movement.past(IN_WEB) < 10
         && !movement.inWater
         && !movement.inLava()
         && movement.positionY % 1 > 0.1
         && movement.pastExternalVelocity != 0;
 
-    boolean movingUpwardsInWeb = movement.webTicks > 2 && movement.motionY() >= 0 && !movement.onGround && movement.pastExternalVelocity > 3;
+    boolean movingUpwardsInWeb = movement.ticks(IN_WEB) > 2 && movement.motionY() >= 0 && !movement.onGround && movement.pastExternalVelocity > 3;
 
     if (movement.inWeb) {
       verticalLegitimateDeviation = Math.max(verticalLegitimateDeviation, movingUpwardsInWeb ? 0.00001 :/*criticalWeb ? 0.000001 : */0.13);
       tags.add(EvaluationTag.WEB);
     }
 
-    if (movement.pastInWeb < 10 && !movement.inWeb && differenceY < 0.1) {
+    if (movement.past(IN_WEB) < 10 && !movement.inWeb && differenceY < 0.1) {
       verticalLegitimateDeviation = Math.max(verticalLegitimateDeviation, 0.1);
       tags.add(EvaluationTag.WEB);
     }
@@ -202,7 +203,7 @@ public final class SimulationEvaluator {
       }
     }
 
-    if (movement.inWater && movement.waterTicks == 1) {
+    if (movement.inWater && movement.ticks(IN_WATER) < 2) {
       verticalLegitimateDeviation = Math.max(verticalLegitimateDeviation, 0.05);
       tags.add(EvaluationTag.WATERFLOW);
     }
@@ -229,7 +230,7 @@ public final class SimulationEvaluator {
     }
 
     // Jump out of water
-    if (movement.pastWaterMovement <= 3 || movement.pastLavaMovement <= 3) {
+    if (movement.past(IN_WATER) <= 3 || movement.pastLavaMovement <= 3) {
       double liquidMotionY;
       if (protocol.waterUpdate()) {
         liquidMotionY = receivedMotionY + 0.6f - movement.positionY + movement.verifiedPositionY;
@@ -248,7 +249,7 @@ public final class SimulationEvaluator {
     }
 
     // Sometimes shit happens
-    if (movement.ticksSneaking <= 1 && !movement.inWater && !movement.inWeb && (movement.onGround() || movement.lastOnGround()) && movement.motionY() <= 0 && movement.motionY() >= -0.5 && movement.lastSneaking) {
+    if (movement.ticks(SNEAKING) <= 1 && !movement.inWater && !movement.inWeb && (movement.onGround() || movement.lastOnGround()) && movement.motionY() <= 0 && movement.motionY() >= -0.5 && movement.lastSneaking) {
       verticalLegitimateDeviation = Math.max(verticalLegitimateDeviation, 0.08f);
       tags.add(EvaluationTag.SNEAKING);
     }
@@ -268,7 +269,7 @@ public final class SimulationEvaluator {
 
     // rethink me
     if (pose == Pose.FALL_FLYING) {
-      if (!movement.inWater && movement.pastWaterMovement <= 2 && abs(receivedMotionY) < 0.1) {
+      if (!movement.inWater && movement.past(IN_WATER) <= 2 && abs(receivedMotionY) < 0.1) {
         multiplier *= 0.01;
       } else if (movement.motionY() >= 0 && movement.onGround) {
         multiplier *= 0.1;
@@ -443,7 +444,7 @@ public final class SimulationEvaluator {
 
     boolean recentlySentFlying = movement.receivedFlyingPacketIn(2);
     double baseMoveSpeed = movement.baseMoveSpeed();
-    boolean inLiquid = (movement.pastWaterMovement < 20 && movement.pastPushedByWaterFlow > 5) || movement.inLava();
+    boolean inLiquid = (movement.past(IN_WATER) < 20 && movement.pastPushedByWaterFlow > 5) || movement.inLava();
 
     if (recentlySentFlying) {
       boolean lessThanExpected = distanceMoved <= predictedDistanceMoved;
@@ -471,7 +472,7 @@ public final class SimulationEvaluator {
       tags.add(EvaluationTag.VELOCITY_FLYING_INACCURACY);
     }
 
-    if (movement.ticksSneaking <= 1 && movement.sneaking || movement.lastSneaking) {
+    if (movement.ticks(SNEAKING) <= 1 && movement.sneaking || movement.lastSneaking) {
       double limit = 0;
       if ((abs(movement.motionX()) < 0.08 || abs(movement.motionZ()) < 0.08) || (movement.sprinting && protocol.cavesAndCliffsUpdate())) {
         boolean smallMovement = abs(movement.motionX()) < 0.08 && abs(movement.motionZ()) < 0.08 && movement.onGround();
@@ -522,7 +523,7 @@ public final class SimulationEvaluator {
     boolean flewWithElytra = movement.pastElytraFlying <= 3;
 
     if (pose == Pose.FALL_FLYING) {
-      if (!movement.inWater && movement.pastWaterMovement <= 2 && distance < 0.3) {
+      if (!movement.inWater && movement.past(IN_WATER) <= 2 && distance < 0.3) {
         abuseHorizontally *= 0.2;
       } else if (movement.motionY() >= 0 && movement.onGround) {
         abuseHorizontally *= 0.3;

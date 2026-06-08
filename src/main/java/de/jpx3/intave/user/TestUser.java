@@ -39,6 +39,7 @@ final class TestUser implements User {
   private final MetadataBundle meta;
   private final Map<Pose, HitboxSize> poseSizes;
   private final Function<String, Object> callback;
+  private final CustomClientSupportConfig customClientSupportConfig = CustomClientSupportConfig.createDefault();
 
   TestUser(Player player, Function<String, Object> callback) {
     this.player = player;
@@ -133,7 +134,7 @@ final class TestUser implements User {
 
   @Override
   public CustomClientSupportConfig customClientSupport() {
-    return null;
+    return customClientSupportConfig;
   }
 
   @Override

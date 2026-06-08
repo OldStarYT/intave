@@ -279,11 +279,6 @@ public final class UnmodifiableSimulationEnvironmentView implements SimulationEn
 	}
 
 	@Override
-	public int pastInWeb() {
-		return delegate.pastInWeb();
-	}
-
-	@Override
 	public void resetInWeb() {
 		throw new UnsupportedOperationException("Cannot modify unmodifiable view");
 	}
@@ -501,11 +496,6 @@ public final class UnmodifiableSimulationEnvironmentView implements SimulationEn
 	@Override
 	public Fluid interactingFluid() {
 		return delegate.interactingFluid();
-	}
-
-	@Override
-	public void setInteractingFluid(Fluid interactingFluid) {
-		throw new UnsupportedOperationException("Cannot modify unmodifiable view");
 	}
 
 	@Override

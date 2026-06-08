@@ -67,7 +67,7 @@ public final class Evaluation {
     boolean velocityDetected = false;
     boolean skipVLCalculation = totalDistance <= 0.00001;
     boolean checkVelocity = !skipVLCalculation
-      && movement.pastInWeb() > 5
+//      && movement.pastInWeb() > 5
       && !movement.inWater()
       && !movement.collidedWithBoat();
 

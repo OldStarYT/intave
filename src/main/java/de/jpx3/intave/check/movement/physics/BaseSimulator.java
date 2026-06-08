@@ -39,10 +39,10 @@ import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_1_14;
 class BaseSimulator extends Simulator {
   @Override
   public void simulatePreTick(
-    User user, Motion motion,
+    User user, Motion baseMotion,
     SimulationEnvironment environment
   ) {
-    handleSneakInWater(user, motion, environment);
+    handleSneakInWater(user, baseMotion, environment);
     updateAquatics(user, environment);
     simulateMotionClamp(user);
   }
@@ -50,7 +50,6 @@ class BaseSimulator extends Simulator {
   private void handleSneakInWater(User user, Motion motion, SimulationEnvironment environment) {
     ProtocolMetadata protocol = user.meta().protocol();
     if (protocol.waterUpdate() && environment.isSneaking() && environment.inWater()) {
-//      environment.setBaseMotionY(environment.baseMotionY() - 0.04F);
       motion.motionY -= 0.04F;
     }
   }
@@ -137,6 +136,8 @@ class BaseSimulator extends Simulator {
     boolean swimming = pose == Pose.SWIMMING;
     boolean crouching = pose == Pose.CROUCHING;
     boolean waterUpdate = protocol.waterUpdate();
+
+    motion = motion.copy();
 
     if (crouching || (!protocol.beeUpdate() && environment.isSneaking())) {
       double sneakingSpeed = user.meta().abilities().attributeValue("player.sneaking_speed");

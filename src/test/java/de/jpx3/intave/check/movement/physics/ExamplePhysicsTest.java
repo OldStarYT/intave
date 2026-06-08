@@ -10,8 +10,6 @@ import de.jpx3.intave.block.shape.resolve.MockShapeResolverPipeline;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
-import de.jpx3.intave.share.Motion;
-import de.jpx3.intave.share.Position;
 import de.jpx3.intave.test.FakePlayerFactory;
 import de.jpx3.intave.test.FakeWorldFactory;
 import de.jpx3.intave.user.User;
@@ -47,7 +45,6 @@ public final class ExamplePhysicsTest {
 
 		DrillResolver.manualInit(MockShapeResolverPipeline.createStoneDefault());
 		WorldBorder worldBorder = MockWorldBorder.create();
-
 		World world = FakeWorldFactory.createWorld(
 			(methodName, args) -> {
 				switch (methodName) {
@@ -77,8 +74,7 @@ public final class ExamplePhysicsTest {
 		);
 
 		int protocolVersion = 47;
-		MockFullBlockStaticPlane plane = new MockFullBlockStaticPlane();
-		plane.horizontalFill(0);
+		MockFullBlockStaticPlane plane = MockFullBlockStaticPlane.createWithHorizontalPlaneAt(0);
 
 		testUser = UserFactory.createTestUserFor(player, s -> {
 			switch (s) {
@@ -102,58 +98,16 @@ public final class ExamplePhysicsTest {
 	public void testy() {
 		Simulator simulator = Simulators.PLAYER;
 		MovementMetadata metadata = testUser.meta().movement();
-
+		metadata.sneaking = false;
 		MovementConfiguration config = MovementConfiguration.blank().pressingW();
 
 		for (int i = 0; i < 150; i++) {
-			metadata.stepHeight = simulator.stepHeight();
-
-			simulator.simulatePreTick(
-				testUser, null, metadata
-			);
-			Motion motion = metadata.mutableBaseMotionCopy();
-			metadata.refreshFriction(false);
-
-			Simulation simulation = simulator.simulateTick(
-				testUser, motion.copy(), metadata.unmodifiable(), config
-			);
-
-			motion = simulation.motion().copy();
-			Position newPosition = metadata.verifiedPosition().add(motion);
-
-			metadata.updateMovement(
-				newPosition.getX(), newPosition.getY(), newPosition.getZ(),
-				0, 0,
-				true, true
-			);
-
-			assertEquals(
-				0.0,
-				simulation.accuracy(metadata.motion()),
-				1.0E-9,
-				"Predicted movement must match the generated packet at tick " + i
-			);
-
-			metadata.assumeOccurred(simulation);
-
-			simulator.simulateAfterTick(
-				testUser, metadata, metadata.position(), motion
-			);
-
-			metadata.setBaseMotion(motion);
-			metadata.lastOnGround = metadata.onGround;
-
-			metadata.setVerifiedPosition(
-				metadata.position(), "AUTOACCEPT"
-			);
-
-			System.out.println(metadata.position() + " " + metadata.mutableBaseMotionCopy());
-
+			simulator.simulate(testUser, metadata, config);
+			System.out.println(metadata.position() + " " + metadata.motion());
 			assertTrue(
 				metadata.verifiedPositionY() >= 1.0,
 				"Player fell through the platform at tick " + i + ": " + metadata.verifiedPosition()
 			);
-
 			assertTrue(
 				Math.abs(metadata.verifiedPositionX()) <= 100 && Math.abs(metadata.verifiedPositionZ()) <= 100,
 				"Player flew away at tick " + i + ": " + metadata.verifiedPosition()

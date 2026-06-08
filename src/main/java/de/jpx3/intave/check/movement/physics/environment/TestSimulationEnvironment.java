@@ -32,8 +32,7 @@ public final class TestSimulationEnvironment implements SimulationEnvironment {
   private boolean inWater, inLava;
   private boolean sprinting, sneaking;
   private boolean collidedHorizontally, collidedVertically;
-  private int pastInWeb = 100;
-  private final float frictionPosSubtraction = 1;
+	private final float frictionPosSubtraction = 1;
   private double fallDistance;
   private boolean inWeb;
   private boolean onGround;
@@ -393,11 +392,6 @@ public final class TestSimulationEnvironment implements SimulationEnvironment {
   }
 
   @Override
-  public int pastInWeb() {
-    return pastInWeb;
-  }
-
-  @Override
   public void resetInWeb() {
     inWeb = false;
   }
@@ -615,11 +609,6 @@ public final class TestSimulationEnvironment implements SimulationEnvironment {
   @Override
   public Fluid interactingFluid() {
     return interactingFluid;
-  }
-
-  @Override
-  public void setInteractingFluid(Fluid interactingFluid) {
-    this.interactingFluid = interactingFluid;
   }
 
   @Override
