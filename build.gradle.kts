@@ -29,6 +29,7 @@ repositories {
   maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
   maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots") }
   maven { url = uri("https://oss.sonatype.org/content/repositories/central") }
+  maven("https://repo.opencollab.dev/maven-snapshots")
 
 }
 
@@ -63,8 +64,11 @@ dependencies {
 
   compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
 
-  // pcap
+  // bytebuddy
   implementation("net.bytebuddy:byte-buddy:1.18.2")
+
+  // floodgate
+  implementation("org.geysermc.floodgate:api:2.0-SNAPSHOT")
 
   testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")

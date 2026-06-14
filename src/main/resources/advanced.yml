@@ -230,10 +230,6 @@ storage:
   # Set to ignore the "intave internals storelog"    and auto-store suggested violations instead
   auto-logs: false
 
-  # Set to let Intave find a suitable trustfactor when you don't specify one
-  # This setting is ignored if cloud-trustfactor is enabled
-  auto-trustfactor: true
-
   # Should Intave try to transfer VLs when switching between servers?
   recover-vl: true
 
