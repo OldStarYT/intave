@@ -88,16 +88,18 @@ public final class PlayerMoveReader extends AbstractPacketReader {
 
 	public boolean anyNaNOrInfiniteValue() {
 		if (hasMovement()) {
+			StructureModifier<Double> movements = movements();
 			for (int i = 0; i < 3; i++) {
-				Double value = movements().read(i);
+				Double value = movements.read(i);
 				if (Double.isNaN(value) || Double.isInfinite(value)) {
 					return true;
 				}
 			}
 		}
 		if (hasRotation()) {
+			StructureModifier<Float> rotations = rotations();
 			for (int i = 0; i < 2; i++) {
-				Float value = rotations().read(i);
+				Float value = rotations.read(i);
 				if (Float.isNaN(value) || Float.isInfinite(value)) {
 					return true;
 				}
@@ -115,10 +117,6 @@ public final class PlayerMoveReader extends AbstractPacketReader {
 	}
 
 	private StructureModifier<Float> rotations() {
-		StructureModifier<Float> modifier = packet().getFloat();
-		if (MinecraftVersions.VER1_21_4.atOrAbove() && isVehicleMove()) {
-			modifier = packet().getStructures().read(0).getFloat();
-		}
-		return modifier;
+		return packet().getFloat();
 	}
 }
