@@ -18,9 +18,7 @@ abstract class AbstractShapeDrill implements ShapeResolverPipeline {
     for (Object bb : bbs) {
       list.add(WrapperConverter.boundingBoxFromAABB(bb));
     }
-    BlockShape merged = BlockShapes.optimizedMerge(list);
-    System.out.println(list.size() + " -> " + merged.elementaryBoxes().size());
-    return merged;
+	  return BlockShapes.optimizedMerge(list);
   }
 
   protected BlockShape translateWithOffset(List<?> bbs, int posX, int posY, int posZ) {
